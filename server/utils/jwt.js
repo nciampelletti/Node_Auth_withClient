@@ -1,29 +1,56 @@
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken")
 
 const createJWT = ({ payload }) => {
-  const token = jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_LIFETIME,
-  });
-  return token;
-};
+  const token = jwt.sign(payload, process.env.JWT_SECRET)
+  return token
+}
 
-const isTokenValid = ({ token }) => jwt.verify(token, process.env.JWT_SECRET);
+const isTokenValid = (token) => jwt.verify(token, process.env.JWT_SECRET)
 
-const attachCookiesToResponse = ({ res, user }) => {
-  const token = createJWT({ payload: user });
+const attachCookiesToResponse = ({ res, user, refreshToken }) => {
+  //Cookie 1 - access cookie (user token)
+  const accessTokenJWT = createJWT({ payload: { user } }) //access token - we pass user only
 
-  const oneDay = 1000 * 60 * 60 * 24;
+  //Cookie 2 - refresh cookie (user and refresh token )
+  const refreshTokenJWT = createJWT({ payload: { user, refreshToken } })
 
-  res.cookie('token', token, {
+  //const oneDay = 1000 * 60 * 60 * 24
+  const oneDay = 1000 * 5 //5 sec
+  const longerExp = 1000 * 60 * 60 * 24 * 30
+
+  //access cookie - short-term - 15 mins , 1 hr
+  //refresh cookie - long-term cookie - 30 days, 60 days
+  res.cookie("accessToken", accessTokenJWT, {
     httpOnly: true,
     expires: new Date(Date.now() + oneDay),
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === "production",
     signed: true,
-  });
-};
+  })
+
+  res.cookie("refreshToken", refreshTokenJWT, {
+    httpOnly: true,
+    expires: new Date(Date.now() + longerExp),
+    secure: process.env.NODE_ENV === "production",
+    signed: true,
+  })
+}
+
+// const attachSingleCookieToResponse = ({ res, user }) => {
+//   const token = createJWT({ payload: user })
+
+//   const oneDay = 1000 * 60 * 60 * 24
+//   //const oneDay = 1000 * 5 //5 sec
+
+//   res.cookie("token", token, {
+//     httpOnly: true,
+//     expires: new Date(Date.now() + oneDay),
+//     secure: process.env.NODE_ENV === "production",
+//     signed: true,
+//   })
+// }
 
 module.exports = {
   createJWT,
   isTokenValid,
   attachCookiesToResponse,
-};
+}

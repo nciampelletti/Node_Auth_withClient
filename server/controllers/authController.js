@@ -1,4 +1,6 @@
 const User = require("../models/User")
+const Token = require("../models/Token")
+
 const { StatusCodes } = require("http-status-codes")
 const CustomError = require("../errors")
 const { attachCookiesToResponse, createTokenUser } = require("../utils")
@@ -36,7 +38,7 @@ const register = async (req, res) => {
   const host = req.get("host")
   const proto = req.protocol
   const originOr = `${proto}://${host}`
-  console.log(originOr)
+  //console.log(originOr)
 
   //client
   const forwardedHost = req.get("x-forwarded-host")
@@ -86,7 +88,35 @@ const login = async (req, res) => {
   }
 
   const tokenUser = createTokenUser(user)
-  attachCookiesToResponse({ res, user: tokenUser })
+
+  //create refresh token
+  let refreshToken = ""
+
+  //check for exisiting token
+  const existingToken = await Token.findOne({ user: user._id })
+
+  if (existingToken) {
+    const { isValid } = existingToken
+    if (!isValid) {
+      throw new CustomError.UnauthenticatedError("Invalid credentials")
+    }
+    refreshToken = existingToken.refreshToken
+
+    attachCookiesToResponse({ res, user: tokenUser, refreshToken })
+
+    res.status(StatusCodes.OK).json({ user: tokenUser })
+    return
+  }
+
+  refreshToken = crypto.randomBytes(40).toString("hex")
+  const userAgent = req.headers["user-agent"]
+  const ip = req.ip
+
+  const userToken = { refreshToken, userAgent, ip, user: user._id }
+
+  await Token.create(userToken)
+
+  attachCookiesToResponse({ res, user: tokenUser, refreshToken })
 
   res.status(StatusCodes.OK).json({ user: tokenUser })
 }
