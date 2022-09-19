@@ -15,7 +15,7 @@ const attachCookiesToResponse = ({ res, user, refreshToken }) => {
   const refreshTokenJWT = createJWT({ payload: { user, refreshToken } })
 
   //const oneDay = 1000 * 60 * 60 * 24
-  const oneDay = 1000 * 5 //5 sec
+  const oneDay = 1000 * 60 * 60 * 24
   const longerExp = 1000 * 60 * 60 * 24 * 30
 
   //access cookie - short-term - 15 mins , 1 hr
